@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block content %}
+<section class="panel"><h1>Track your complaint</h1><form method="post"><label>Complaint ID <input name="complaint_id" placeholder="Example: NV1234567" required></label><button class="primary">Check status</button></form>
+{% if complaint %}<div class="result"><h2>{{ complaint.complaint_id }}</h2><p><b>Status:</b> <span class="status">{{ complaint.status }}</span></p><p><b>Department:</b> {{ complaint.department }} · <b>Priority:</b> {{ complaint.severity }}</p><p><b>Complaint:</b> {{ complaint.complaint_text }}</p><p><b>Submitted:</b> {{ complaint.created_at }}</p></div>{% endif %}
+</section>{% endblock %}

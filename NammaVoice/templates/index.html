@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block content %}
+<section class="hero"><div><span class="tag">AI-POWERED CITIZEN GRIEVANCE PLATFORM</span><h1>Your voice. Your issue. Our attention.</h1>
+<p>Report public problems using your voice or by typing. Submit a location and photo to help the admin understand the issue.</p></div></section>
+<section class="panel"><h2>Register a complaint</h2>
+<form action="/submit" method="post" enctype="multipart/form-data">
+<div class="grid">
+<label>Your name <input name="name" placeholder="Optional"></label>
+<label>Phone number <input name="phone" placeholder="Optional"></label>
+<label>Preferred language <select name="language" id="language"><option>Kannada</option><option>English</option><option>Hindi</option><option>Telugu</option><option>Tamil</option></select></label>
+<label>Location / Area <input name="location" placeholder="Village, ward or area"></label>
+</div>
+<label>Describe the problem <textarea id="complaint" name="complaint" rows="5" required placeholder="Example: ನಮ್ಮ ಏರಿಯಾದಲ್ಲಿ ಮೂರು ದಿನಗಳಿಂದ ಕುಡಿಯುವ ನೀರು ಬರುತ್ತಿಲ್ಲ."></textarea></label>
+<div class="actions"><button type="button" class="secondary" id="startVoice">🎤 Speak complaint</button><button type="button" class="secondary" id="stopVoice">Stop</button><span id="voiceStatus">Voice input is available in supported browsers (best in Chrome).</span></div>
+<div class="grid">
+<label>Attach a photo <input type="file" name="photo" accept="image/*"></label>
+<label>Location coordinates <button type="button" class="secondary" id="getLocation">📍 Get my location</button><small id="locStatus">Location permission is optional.</small></label>
+<input type="hidden" name="latitude" id="latitude"><input type="hidden" name="longitude" id="longitude">
+</div>
+<button class="primary" type="submit">Submit complaint</button>
+</form></section>
+<section class="info"><h3>What happens next?</h3><p>Our prototype categorizes the issue, suggests a priority, creates a complaint ID and stores it for admin review. It does not automatically send complaints to government offices.</p></section>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}

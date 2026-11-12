@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block content %}
+<h1>Administrator dashboard</h1><p class="muted">Demo dashboard for complaints stored in this project.</p>
+<div class="stats"><div><b>{{ counts.total }}</b><span>Total</span></div><div><b>{{ counts.pending }}</b><span>Pending / review</span></div><div><b>{{ counts.progress }}</b><span>In progress</span></div><div><b>{{ counts.resolved }}</b><span>Resolved</span></div></div>
+<section class="panel"><h2>All complaints</h2>
+{% if complaints %}<div class="tablewrap"><table><thead><tr><th>ID</th><th>Complaint</th><th>Department</th><th>Priority</th><th>Location</th><th>Status / Update</th></tr></thead><tbody>
+{% for c in complaints %}<tr><td>{{ c.complaint_id }}</td><td>{{ c.complaint_text }}<br><small>{{ c.created_at }} · {{ c.language }}</small>{% if c.photo %}<br><a href="{{ url_for('static', filename='uploads/' + c.photo) }}" target="_blank">View photo</a>{% endif %}</td><td>{{ c.department }}</td><td><span class="priority {{ c.severity|lower }}">{{ c.severity }}</span></td><td>{{ c.location or 'Not provided' }}{% if c.latitude and c.longitude %}<br><a target="_blank" href="https://www.openstreetmap.org/?mlat={{c.latitude}}&mlon={{c.longitude}}">View map</a>{% endif %}</td><td><b>{{ c.status }}</b><form method="post" action="/update_status" class="update"><input type="hidden" name="complaint_id" value="{{ c.complaint_id }}"><select name="status">{% for s in ['Submitted','Under Review','In Progress','Resolved'] %}<option {% if c.status==s %}selected{% endif %}>{{s}}</option>{% endfor %}</select><button class="secondary small">Save</button></form></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<p>No complaints submitted yet.</p>{% endif %}</section>
+{% endblock %}

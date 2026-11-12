@@ -1,0 +1,35 @@
+
+{% extends "base.html" %}
+{% block content %}
+
+<section class="panel success">
+    <div class="big">✓</div>
+
+    <h1>Complaint registered!</h1>
+
+    <p>Your prototype complaint ID is:</p>
+
+    <div class="complaint-id">{{ complaint_id }}</div>
+
+    <p>
+        <b>Suggested department:</b> {{ department }}<br>
+        <b>Suggested priority:</b> {{ severity }}
+    </p>
+
+    <p>Save this ID to check the status later.</p>
+
+    {% if audio_url %}
+    <div class="voice-confirmation">
+        <h3>🔊 Voice Confirmation</h3>
+        <p>Listen to your complaint registration confirmation:</p>
+        <audio controls>
+            <source src="{{ audio_url }}" type="audio/wav">
+            Your browser does not support audio.
+        </audio>
+    </div>
+    {% endif %}
+
+    <a class="primary linkbutton" href="/track">Track complaint</a>
+</section>
+
+{% endblock %}
