@@ -7,7 +7,9 @@ const stop = document.getElementById("stopVoice");
 let mediaRecorder = null;
 let audioChunks = [];
 let microphoneStream = null;
+let recordingTimer = null;
 
+const MAX_RECORDING_TIME = 120000; // 2 minutes
 if (start && stop) {
 
     start.onclick = async () => {
@@ -91,8 +93,19 @@ if (start && stop) {
 
             mediaRecorder.start();
 
-            status.textContent = "Listening... Speak your complaint.";
+status.textContent = "Listening... You can speak for up to 2 minutes.";
 
+start.disabled = true;
+stop.disabled = false;
+
+recordingTimer = setTimeout(() => {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        status.textContent = "2-minute recording limit reached. Processing...";
+        start.disabled = false;
+        stop.disabled = true;
+    }
+}, MAX_RECORDING_TIME);
             start.disabled = true;
             stop.disabled = false;
 
@@ -108,7 +121,8 @@ if (start && stop) {
 
         if (mediaRecorder && mediaRecorder.state === "recording") {
 
-            mediaRecorder.stop();
+            clearTimeout(recordingTimer);
+mediaRecorder.stop();
 
             status.textContent = "Recording stopped. Processing...";
 
