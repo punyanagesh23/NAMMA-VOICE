@@ -591,7 +591,7 @@ def init_db():
             )
         """)
 
-        # Check whether the history table needs a created_at column.
+               # Check and add missing status history columns safely.
         history_columns = [
             row["name"]
             for row in con.execute(
@@ -604,6 +604,19 @@ def init_db():
                 ALTER TABLE complaint_status_history
                 ADD COLUMN created_at TEXT
             """)
+
+        if "changed_at" not in history_columns:
+            con.execute("""
+                ALTER TABLE complaint_status_history
+                ADD COLUMN changed_at TEXT
+            """)
+
+        # Keep both timestamp columns synchronized.
+        con.execute("""
+            UPDATE complaint_status_history
+            SET changed_at = created_at
+            WHERE changed_at IS NULL OR changed_at = ''
+        """)
 
         # Update language for older complaints.
         old_complaints = con.execute("""
