@@ -1799,8 +1799,9 @@ def download_pdf():
 # APPLICATION STARTUP
 # =========================================================
 
+init_db()
+
 if __name__ == "__main__":
-    init_db()
 
     print("")
     print("======================================")
@@ -1808,7 +1809,6 @@ if __name__ == "__main__":
     print("======================================")
     print("Open this address in your browser:")
     print("http://127.0.0.1:5000")
-    print("======================================")
 
     app.run(
         host="127.0.0.1",
