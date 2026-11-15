@@ -1,0 +1,100 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+.login-container {
+    max-width: 430px;
+    margin: 65px auto;
+    padding: 35px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.10);
+}
+
+.login-container h2 {
+    text-align: center;
+    color: #172554;
+    margin-bottom: 8px;
+}
+
+.login-description {
+    text-align: center;
+    color: #64748b;
+    margin-bottom: 28px;
+}
+
+.login-container label {
+    display: block;
+    margin: 15px 0 7px;
+    font-weight: 600;
+}
+
+.login-container input {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.login-container button {
+    width: 100%;
+    margin-top: 25px;
+    padding: 14px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.login-container button:hover {
+    background: #1d4ed8;
+}
+</style>
+
+<div class="login-container">
+
+    <h2>🔐 Admin Login</h2>
+
+    <p class="login-description">
+        Sign in to manage NammaVoice complaints.
+    </p>
+
+    <form method="POST" action="{{ url_for('admin_login') }}">
+
+        <label for="username">Username</label>
+
+        <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Enter admin username"
+            required
+            autocomplete="username"
+        >
+
+        <label for="password">Password</label>
+
+        <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter admin password"
+            required
+            autocomplete="current-password"
+        >
+
+        <button type="submit">
+            Login to Dashboard
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

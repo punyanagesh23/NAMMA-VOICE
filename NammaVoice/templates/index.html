@@ -1,23 +1,838 @@
-{% extends "base.html" %}{% block content %}
-<section class="hero"><div><span class="tag">AI-POWERED CITIZEN GRIEVANCE PLATFORM</span><h1>Your voice. Your issue. Our attention.</h1>
-<p>Report public problems using your voice or by typing. Submit a location and photo to help the admin understand the issue.</p></div></section>
-<section class="panel"><h2>Register a complaint</h2>
-<form action="/submit" method="post" enctype="multipart/form-data">
-<div class="grid">
-<label>Your name <input name="name" placeholder="Optional"></label>
-<label>Phone number <input name="phone" placeholder="Optional"></label>
-<label>Preferred language <select name="language" id="language"><option>Kannada</option><option>English</option><option>Hindi</option><option>Telugu</option><option>Tamil</option></select></label>
-<label>Location / Area <input name="location" placeholder="Village, ward or area"></label>
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+/* ===== PAGE LAYOUT ===== */
+
+.citizen-page {
+    --navy: #172554;
+    --blue: #2563eb;
+    --light-blue: #eff6ff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #dbe4f0;
+
+    display: flex;
+    min-height: 85vh;
+    color: var(--text);
+    gap: 22px;
+    padding: 15px 0 30px;
+}
+
+/* ===== SIDEBAR ===== */
+
+.citizen-sidebar {
+    width: 225px;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, #172554, #1e40af);
+    color: white;
+    border-radius: 17px;
+    padding: 25px 15px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 25px rgba(23,37,84,.15);
+}
+
+.citizen-brand {
+    padding: 5px 10px 25px;
+    border-bottom: 1px solid rgba(255,255,255,.18);
+}
+
+.citizen-brand h2 {
+    color: white;
+    font-size: 23px;
+    margin: 0 0 6px;
+    font-weight: 800;
+}
+
+.citizen-brand p {
+    color: #bfdbfe;
+    font-size: 11px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.sidebar-label {
+    color: #93c5fd;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin: 25px 10px 12px;
+}
+
+.citizen-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.citizen-nav a {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: #dbeafe;
+    padding: 12px 13px;
+    border-radius: 9px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: .2s;
+}
+
+.citizen-nav a:hover,
+.citizen-nav a.active {
+    background: white;
+    color: #1d4ed8;
+}
+
+.sidebar-bottom {
+    margin-top: auto;
+    padding: 15px 10px 0;
+    border-top: 1px solid rgba(255,255,255,.18);
+    color: #bfdbfe;
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+/* ===== MAIN CONTENT ===== */
+
+.citizen-main {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ===== HERO ===== */
+
+.citizen-hero {
+    background: linear-gradient(115deg,#172554,#2563eb 70%,#0e7490);
+    border-radius: 17px;
+    padding: 34px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 25px rgba(37,99,235,.15);
+}
+
+.citizen-hero::after {
+    content: "🏙️";
+    position: absolute;
+    right: 35px;
+    top: 25px;
+    font-size: 75px;
+    opacity: .2;
+}
+
+.citizen-hero .tag {
+    display: inline-block;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,.4);
+    border-radius: 20px;
+    color: #dbeafe;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .5px;
+}
+
+.citizen-hero h1 {
+    color: white;
+    font-size: 30px;
+    line-height: 1.2;
+    margin: 15px 0 10px;
+    max-width: 600px;
+    font-weight: 800;
+}
+
+.citizen-hero p {
+    color: #dbeafe;
+    font-size: 13px;
+    line-height: 1.7;
+    max-width: 550px;
+    margin: 0;
+}
+
+/* ===== FEATURE STRIP ===== */
+
+.citizen-features {
+    display: grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.citizen-feature {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    box-shadow: 0 3px 12px rgba(15,23,42,.035);
+}
+
+.feature-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 9px;
+    background: #eff6ff;
+    display: grid;
+    place-items: center;
+    font-size: 17px;
+}
+
+.citizen-feature strong {
+    display: block;
+    font-size: 12px;
+    color: var(--navy);
+    margin-bottom: 4px;
+}
+
+.citizen-feature small {
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.4;
+}
+
+/* ===== FORM PANEL ===== */
+
+.citizen-panel,
+.process-panel {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 18px rgba(15,23,42,.04);
+}
+
+.panel-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+}
+
+.panel-heading .heading-icon {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    background: #eff6ff;
+    border-radius: 11px;
+    font-size: 19px;
+}
+
+.panel-heading h2 {
+    color: var(--navy);
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0 0 4px;
+}
+
+.panel-heading p {
+    color: var(--muted);
+    font-size: 11px;
+    margin: 0;
+}
+
+/* ===== FORM FIELDS ===== */
+
+.citizen-form .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.citizen-form label {
+    display: block;
+    font-size: 12px;
+    color: #334155;
+    font-weight: 700;
+}
+
+.citizen-form input,
+.citizen-form select,
+.citizen-form textarea {
+    width: 100%;
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: white;
+    color: #1e293b;
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.citizen-form input:focus,
+.citizen-form select:focus,
+.citizen-form textarea:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+}
+
+.citizen-form textarea {
+    resize: vertical;
+    min-height: 115px;
+    line-height: 1.6;
+}
+
+.citizen-form .full-width {
+    margin-bottom: 18px;
+}
+
+.citizen-form small {
+    display: block;
+    margin-top: 7px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 400;
+}
+
+/* ===== VOICE CONTROLS ===== */
+
+.voice-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 9px;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+.citizen-form button {
+    cursor: pointer;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    transition: .2s;
+}
+
+.citizen-form button:hover {
+    filter: brightness(.95);
+}
+
+.voice-start {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.voice-stop {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+#voiceStatus {
+    font-size: 10px;
+    color: var(--muted);
+}
+
+/* ===== PHOTO AND GPS ===== */
+
+.upload-box,
+.location-box {
+    border: 1px dashed #93a4bd;
+    border-radius: 10px;
+    padding: 13px;
+    min-height: 65px;
+    background: #f8fafc;
+}
+
+.location-box {
+    background: #f0fdfa;
+    border-color: #99f6e4;
+}
+
+.upload-box input {
+    padding: 7px;
+    background: white;
+}
+
+.location-button {
+    background: #ccfbf1;
+    color: #115e59;
+}
+
+#locStatus {
+    font-size: 10px;
+}
+
+/* ===== SUBMIT ===== */
+
+.submit-button {
+    width: 100%;
+    margin-top: 5px;
+    padding: 15px !important;
+    color: white;
+    background: linear-gradient(100deg,#1d4ed8,#2563eb);
+    font-size: 13px !important;
+    box-shadow: 0 5px 12px rgba(37,99,235,.2);
+}
+
+.submit-button:hover {
+    background: #1e40af;
+}
+
+/* ===== PROCESS ===== */
+
+.process-panel h3 {
+    color: var(--navy);
+    font-size: 17px;
+    margin: 0 0 7px;
+}
+
+.process-panel > p {
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 18px;
+}
+
+.process-grid {
+    display: grid;
+    grid-template-columns: repeat(4,minmax(0,1fr));
+    gap: 10px;
+}
+
+.process-step {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 13px;
+}
+
+.process-number {
+    display: inline-grid;
+    place-items: center;
+    width: 23px;
+    height: 23px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-radius: 7px;
+    font-size: 10px;
+    font-weight: 800;
+    margin-bottom: 9px;
+}
+
+.process-step strong {
+    display: block;
+    color: var(--navy);
+    font-size: 11px;
+    margin-bottom: 5px;
+}
+
+.process-step small {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.notice {
+    margin-top: 14px;
+    padding: 12px;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    color: #92400e;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+/* ===== RESPONSIVE ===== */
+
+@media(max-width: 900px) {
+    .citizen-page {
+        flex-direction: column;
+    }
+
+    .citizen-sidebar {
+        width: auto;
+        padding: 15px;
+    }
+
+    .citizen-brand {
+        padding-bottom: 12px;
+    }
+
+    .citizen-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .sidebar-label,
+    .sidebar-bottom {
+        display: none;
+    }
+}
+
+@media(max-width: 600px) {
+    .citizen-features {
+        grid-template-columns: 1fr;
+    }
+
+    .citizen-form .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .process-grid {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+
+    .citizen-hero {
+        padding: 23px;
+    }
+
+    .citizen-hero h1 {
+        font-size: 24px;
+    }
+
+    .citizen-hero::after {
+        font-size: 45px;
+        right: 15px;
+    }
+
+    .citizen-panel,
+    .process-panel {
+        padding: 17px;
+    }
+}
+</style>
+
+
+<div class="citizen-page">
+
+    <!-- SIDEBAR -->
+
+    <aside class="citizen-sidebar">
+
+        <div class="citizen-brand">
+            <h2>🏛 NammaVoice</h2>
+            <p>Your voice. Your issue. Our attention.</p>
+        </div>
+
+        <div class="sidebar-label">MAIN MENU</div>
+
+        <nav class="citizen-nav">
+
+            <a href="/" class="active">🏠 Home</a>
+
+            <a href="#register">📝 Register Complaint</a>
+
+            <a href="/track">🔎 Track Complaint</a>
+
+            <a href="/admin_login">🔐 Admin Login</a>
+
+        </nav>
+
+        <div class="sidebar-bottom">
+            <strong>Citizen Support Platform</strong>
+            <p>Helping citizens report public problems through voice and text.</p>
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+
+    <main class="citizen-main">
+
+        <!-- HERO -->
+
+        <section class="citizen-hero">
+
+            <span class="tag">AI-POWERED CITIZEN GRIEVANCE PLATFORM</span>
+
+            <h1>Your voice. Your issue. Our attention.</h1>
+
+            <p>
+                Every civic problem deserves attention.
+                Report road damage, water shortages, drainage issues
+                and other public problems using your voice or by typing.
+            </p>
+
+        </section>
+
+
+        <!-- FEATURES -->
+
+        <section class="citizen-features">
+
+            <div class="citizen-feature">
+                <div class="feature-icon">🎙️</div>
+                <div>
+                    <strong>Voice-Based Reporting</strong>
+                    <small>Speak in your preferred language.</small>
+                </div>
+            </div>
+
+            <div class="citizen-feature">
+                <div class="feature-icon">🌐</div>
+                <div>
+                    <strong>Multilingual Support</strong>
+                    <small>Five supported Indian languages.</small>
+                </div>
+            </div>
+
+            <div class="citizen-feature">
+                <div class="feature-icon">📍</div>
+                <div>
+                    <strong>Location & Photo Evidence</strong>
+                    <small>Help identify the reported problem.</small>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- REGISTRATION FORM -->
+
+        <section class="citizen-panel" id="register">
+
+            <div class="panel-heading">
+
+                <div class="heading-icon">📝</div>
+
+                <div>
+                    <h2>Register a Complaint</h2>
+                    <p>Provide the details below so the administrator can review your complaint.</p>
+                </div>
+
+            </div>
+
+
+            <form
+                class="citizen-form"
+                action="/submit"
+                method="POST"
+                enctype="multipart/form-data"
+            >
+
+                <div class="form-grid">
+
+                    <label>
+                        Your name
+
+                        <input
+                            type="text"
+                            name="name"
+                            placeholder="Enter your name (optional)"
+                        >
+                    </label>
+
+                    <label>
+                        Phone number
+
+                        <input
+                            type="tel"
+                            name="phone"
+                            placeholder="Enter your phone number (optional)"
+                        >
+                    </label>
+
+                    <label>
+                        Preferred language
+
+                        <select name="language" id="language" required>
+                            <option value="Kannada">Kannada</option>
+                            <option value="English">English</option>
+                            <option value="Hindi">Hindi</option>
+                            <option value="Telugu">Telugu</option>
+                            <option value="Tamil">Tamil</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        Location / Area
+
+                        <input
+                            type="text"
+                            name="location"
+                            placeholder="Village, ward, street or area"
+                        >
+                    </label>
+
+                </div>
+
+
+                <div class="full-width">
+
+                    <label for="complaint">
+                        Describe the problem *
+                    </label>
+
+                    <textarea
+                        id="complaint"
+                        name="complaint"
+                        rows="5"
+                        required
+                        placeholder="Describe the civic problem here. You can type in Kannada, English, Hindi, Telugu or Tamil."
+                    ></textarea>
+
+                    <small>
+                        Please describe the problem and where it is happening.
+                    </small>
+
+
+                    <div class="voice-controls">
+
+                        <button
+                            type="button"
+                            class="voice-start"
+                            id="startVoice"
+                        >
+                            🎤 Speak Complaint
+                        </button>
+
+                        <button
+                            type="button"
+                            class="voice-stop"
+                            id="stopVoice"
+                        >
+                            Stop
+                        </button>
+
+                        <span id="voiceStatus" aria-live="polite">
+                            Select your language and speak your complaint.
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-grid">
+
+                    <label>
+                        Attach Photo Evidence
+
+                        <div class="upload-box">
+
+                            <input
+                                type="file"
+                                name="photo"
+                                accept="image/png,image/jpeg,image/jpg,image/webp"
+                            >
+
+                            <small>Upload a photo of the reported problem, if available.</small>
+
+                        </div>
+
+                    </label>
+
+
+                    <label>
+                        Location Coordinates
+
+                        <div class="location-box">
+
+                            <button
+                                type="button"
+                                class="location-button"
+                                id="getLocation"
+                            >
+                                📍 Get My Location
+                            </button>
+
+                            <small id="locStatus">
+                                GPS permission is optional.
+                            </small>
+
+                        </div>
+
+                    </label>
+
+                    <input
+                        type="hidden"
+                        name="latitude"
+                        id="latitude"
+                    >
+
+                    <input
+                        type="hidden"
+                        name="longitude"
+                        id="longitude"
+                    >
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="submit-button"
+                >
+                    Submit Complaint &nbsp; →
+                </button>
+
+                <small style="text-align:center;">
+                    Please check your complaint details before submitting.
+                </small>
+
+            </form>
+
+        </section>
+
+
+        <!-- WHAT HAPPENS NEXT -->
+
+        <section class="process-panel">
+
+            <h3>What happens after submission?</h3>
+
+            <p>Your complaint is processed and made available for administrator review.</p>
+
+            <div class="process-grid">
+
+                <div class="process-step">
+                    <span class="process-number">1</span>
+                    <strong>Submit Complaint</strong>
+                    <small>Report the problem using voice or text.</small>
+                </div>
+
+                <div class="process-step">
+                    <span class="process-number">2</span>
+                    <strong>AI Analysis</strong>
+                    <small>Complaint classification and priority suggestion.</small>
+                </div>
+
+                <div class="process-step">
+                    <span class="process-number">3</span>
+                    <strong>Admin Review</strong>
+                    <small>The administrator reviews and updates the complaint.</small>
+                </div>
+
+                <div class="process-step">
+                    <span class="process-number">4</span>
+                    <strong>Track Progress</strong>
+                    <small>Use your complaint ID to check its status.</small>
+                </div>
+
+            </div>
+
+            <div class="notice">
+                <strong>Note:</strong>
+                NammaVoice records and manages citizen complaints for administrator review.
+                Submission does not automatically forward a complaint to a government department.
+            </div>
+
+        </section>
+
+    </main>
+
 </div>
-<label>Describe the problem <textarea id="complaint" name="complaint" rows="5" required placeholder="Example: ನಮ್ಮ ಏರಿಯಾದಲ್ಲಿ ಮೂರು ದಿನಗಳಿಂದ ಕುಡಿಯುವ ನೀರು ಬರುತ್ತಿಲ್ಲ."></textarea></label>
-<div class="actions"><button type="button" class="secondary" id="startVoice">🎤 Speak complaint</button><button type="button" class="secondary" id="stopVoice">Stop</button><span id="voiceStatus">Voice input is available in supported browsers (best in Chrome).</span></div>
-<div class="grid">
-<label>Attach a photo <input type="file" name="photo" accept="image/*"></label>
-<label>Location coordinates <button type="button" class="secondary" id="getLocation">📍 Get my location</button><small id="locStatus">Location permission is optional.</small></label>
-<input type="hidden" name="latitude" id="latitude"><input type="hidden" name="longitude" id="longitude">
-</div>
-<button class="primary" type="submit">Submit complaint</button>
-</form></section>
-<section class="info"><h3>What happens next?</h3><p>Our prototype categorizes the issue, suggests a priority, creates a complaint ID and stores it for admin review. It does not automatically send complaints to government offices.</p></section>
+
+
 <script src="{{ url_for('static', filename='app.js') }}"></script>
+
 {% endblock %}

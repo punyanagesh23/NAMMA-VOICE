@@ -1,17 +1,415 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NammaVoice</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NammaVoice</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 25px;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* ADMIN SIDEBAR */
+
+        .admin-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 245px;
+            padding: 25px 15px;
+            background: #172554;
+            color: white;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .admin-brand {
+            display: block;
+            color: white;
+            font-size: 23px;
+            font-weight: bold;
+            text-decoration: none;
+            margin-bottom: 8px;
+        }
+
+        .admin-subtitle {
+            color: #bfdbfe;
+            font-size: 12px;
+            margin-bottom: 35px;
+        }
+
+        .admin-nav-title {
+            display: block;
+            color: #93c5fd;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin: 25px 10px 12px;
+            text-transform: uppercase;
+        }
+
+        .admin-nav {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+            gap: 7px;
+        }
+
+        .admin-nav a {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            width: 100% !important;
+            min-height: 45px;
+            padding: 12px 14px;
+            margin: 0 !important;
+            color: #dbeafe;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+            white-space: normal;
+            transition: background 0.2s;
+        }
+
+        .admin-nav a:hover,
+        .admin-nav a.active {
+            background: #2563eb;
+            color: white;
+        }
+
+        .admin-nav a.disabled-link {
+            color: #94a3b8;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .admin-nav a.disabled-link:hover {
+            background: transparent;
+        }
+
+        .admin-nav small {
+            font-size: 10px;
+            margin-left: 5px;
+        }
+
+        /* LOGOUT */
+
+        .admin-nav a.logout-link {
+            background: #7f1d1d;
+            color: white;
+            margin-top: 12px !important;
+        }
+
+        .admin-nav a.logout-link:hover {
+            background: #b91c1c;
+        }
+
+        /* ADMIN CONTENT */
+
+        .admin-main {
+            margin-left: 245px;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* CITIZEN HEADER */
+
+        .public-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 16px 5%;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .public-header .brand {
+            color: #172554;
+            font-size: 22px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+
+        .public-header nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 22px;
+        }
+
+        .public-header nav a {
+            color: #334155;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .public-header nav a:hover {
+            color: #2563eb;
+        }
+
+        .public-main {
+            min-height: 75vh;
+            padding: 25px;
+        }
+
+        footer {
+            padding: 18px;
+            text-align: center;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        /* MOBILE */
+
+        @media (max-width: 768px) {
+
+            .admin-sidebar {
+                position: relative;
+                width: 100%;
+                min-height: auto;
+                padding: 18px;
+            }
+
+            .admin-subtitle {
+                margin-bottom: 15px;
+            }
+
+            .admin-nav-title {
+                margin-top: 15px;
+            }
+
+            .admin-main {
+                margin-left: 0;
+                padding: 12px;
+            }
+
+            .public-main {
+                padding: 15px;
+            }
+        }
+    </style>
 </head>
+
 <body>
-<header><a class="brand" href="/">🎙️ NammaVoice</a><nav><a href="/">Register</a><a href="/track">Track</a><a href="/admin">Admin</a></nav></header>
-<main>
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}<div class="alert {{category}}">{{message}}</div>{% endfor %}
-  {% endwith %}
-  {% block content %}{% endblock %}
+
+{% if request.path == '/admin' %}
+
+    <!-- ADMIN SIDEBAR -->
+
+    <aside class="admin-sidebar">
+
+        <a href="/admin" class="admin-brand">
+            🎙️ NammaVoice
+        </a>
+
+        <div class="admin-subtitle">
+            Administration Panel
+        </div>
+
+        <div class="admin-nav-title">
+            Main Menu
+        </div>
+
+        <nav class="admin-nav">
+
+            <a href="/admin" class="active">
+                ▦ &nbsp; Dashboard
+            </a>
+
+            <a href="#complaintsTable" data-section="complaintsTable">
+                ☷ &nbsp; All Complaints
+            </a>
+
+            <a href="#complaintMap" data-section="complaintMap">
+                📍 &nbsp; Live Complaint Map
+            </a>
+
+            <a href="#departmentChart" data-section="departmentChart">
+                ▥ &nbsp; Analytics & Reports
+            </a>
+
+        </nav>
+
+        <!-- DOWNLOADS: ONLY TWO LINKS -->
+
+        <div class="admin-nav-title">
+            Downloads
+        </div>
+
+        <nav class="admin-nav">
+
+            <a href="{{ url_for('download_csv') }}">
+                📥 &nbsp; Download CSV Report
+            </a>
+
+            <a href="{{ url_for('download_pdf') }}">
+                📄 &nbsp; Download PDF Report
+            </a>
+
+        </nav>
+
+        <!-- ACCOUNT -->
+
+        <div class="admin-nav-title">
+            Account
+        </div>
+
+        <nav class="admin-nav">
+
+            <a href="{{ url_for('admin_logout') }}"
+               class="logout-link">
+                🚪 &nbsp; Logout
+            </a>
+
+        </nav>
+
+    </aside>
+
+{% else %}
+
+    <!-- CITIZEN HEADER -->
+
+<header class="public-header">
+
+    <a class="brand" href="/">
+        🎙️ NammaVoice
+    </a>
+
+</header>
+{% endif %}
+
+<!-- SHARED CONTENT AREA -->
+
+{% if request.path == '/admin' %}
+    <main class="admin-main">
+{% else %}
+    <main class="public-main">
+{% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="alert {{ category }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
 </main>
-<footer>NammaVoice · Student prototype · Not connected to a government department</footer>
-</body></html>
+
+{% if request.path != '/admin' %}
+
+    <footer>
+        NammaVoice · Your voice. Your issue. Our attention.
+        <br>
+        An independent civic grievance platform.
+    </footer>
+
+{% endif %}
+
+{% if request.path == '/admin' %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // Identify complaints table
+    const tables = document.querySelectorAll(".admin-main table");
+
+    tables.forEach(function(table) {
+
+        const headings = Array.from(
+            table.querySelectorAll("thead th")
+        ).map(function(th) {
+            return th.innerText.trim().toLowerCase();
+        });
+
+        if (
+            headings.some(h => h.includes("complaint id")) &&
+            headings.some(h => h.includes("department"))
+        ) {
+            table.id = "complaintsTable";
+        }
+    });
+
+    // Identify complaint map
+    const mapElement =
+        document.getElementById("map") ||
+        document.querySelector(".leaflet-container");
+
+    if (mapElement && !mapElement.id) {
+        mapElement.id = "complaintMap";
+    }
+
+    // Identify analytics section
+    const chartCanvas = document.querySelector(
+        ".admin-main canvas"
+    );
+
+    if (chartCanvas) {
+        let chartSection = chartCanvas;
+
+        for (let i = 0; i < 4; i++) {
+            if (
+                chartSection.parentElement &&
+                chartSection.parentElement !== document.querySelector(".admin-main")
+            ) {
+                chartSection = chartSection.parentElement;
+            }
+        }
+
+        if (!chartSection.id) {
+            chartSection.id = "departmentChart";
+        }
+    }
+
+    // Smooth scrolling for sidebar links
+    document.querySelectorAll(
+        '.admin-nav a[data-section]'
+    ).forEach(function(link) {
+
+        link.addEventListener("click", function(event) {
+
+            const targetId = this.dataset.section;
+            const target = document.getElementById(targetId);
+
+            if (target) {
+                event.preventDefault();
+
+                target.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+            }
+        });
+    });
+
+});
+</script>
+
+{% endif %}
+
+</body>
+</html>
