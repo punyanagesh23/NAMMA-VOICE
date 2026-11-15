@@ -1,8 +1,1927 @@
-{% extends "base.html" %}{% block content %}
-<h1>Administrator dashboard</h1><p class="muted">Demo dashboard for complaints stored in this project.</p>
-<div class="stats"><div><b>{{ counts.total }}</b><span>Total</span></div><div><b>{{ counts.pending }}</b><span>Pending / review</span></div><div><b>{{ counts.progress }}</b><span>In progress</span></div><div><b>{{ counts.resolved }}</b><span>Resolved</span></div></div>
-<section class="panel"><h2>All complaints</h2>
-{% if complaints %}<div class="tablewrap"><table><thead><tr><th>ID</th><th>Complaint</th><th>Department</th><th>Priority</th><th>Location</th><th>Status / Update</th></tr></thead><tbody>
-{% for c in complaints %}<tr><td>{{ c.complaint_id }}</td><td>{{ c.complaint_text }}<br><small>{{ c.created_at }} · {{ c.language }}</small>{% if c.photo %}<br><a href="{{ url_for('static', filename='uploads/' + c.photo) }}" target="_blank">View photo</a>{% endif %}</td><td>{{ c.department }}</td><td><span class="priority {{ c.severity|lower }}">{{ c.severity }}</span></td><td>{{ c.location or 'Not provided' }}{% if c.latitude and c.longitude %}<br><a target="_blank" href="https://www.openstreetmap.org/?mlat={{c.latitude}}&mlon={{c.longitude}}">View map</a>{% endif %}</td><td><b>{{ c.status }}</b><form method="post" action="/update_status" class="update"><input type="hidden" name="complaint_id" value="{{ c.complaint_id }}"><select name="status">{% for s in ['Submitted','Under Review','In Progress','Resolved'] %}<option {% if c.status==s %}selected{% endif %}>{{s}}</option>{% endfor %}</select><button class="secondary small">Save</button></form></td></tr>{% endfor %}
-</tbody></table></div>{% else %}<p>No complaints submitted yet.</p>{% endif %}</section>
+
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+/* =========================================
+   NAMMAVOICE ADMIN DASHBOARD
+========================================= */
+
+.admin-dashboard {
+    --navy: #14213d;
+    --blue: #2563eb;
+    --teal: #0d9488;
+    --text: #1e293b;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    color: var(--text);
+    padding-bottom: 35px;
+}
+
+.admin-dashboard * {
+    box-sizing: border-box;
+}
+
+.admin-dashboard .muted {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* HEADER */
+
+.admin-dashboard .dashboard-heading {
+    position: relative;
+    overflow: hidden;
+    padding: 32px;
+    margin-bottom: 25px;
+    border-radius: 18px;
+    color: white;
+    background: linear-gradient(120deg, #14213d, #1e40af 65%, #0d9488);
+    box-shadow: 0 10px 28px rgba(30,64,175,.18);
+}
+
+.admin-dashboard .dashboard-heading::after {
+    content: "";
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    border: 35px solid rgba(255,255,255,.08);
+    border-radius: 50%;
+    right: -45px;
+    top: -95px;
+}
+
+.admin-dashboard .dashboard-heading h1 {
+    color: white;
+    font-size: 30px;
+    font-weight: 800;
+    margin: 0 0 9px;
+    position: relative;
+    z-index: 1;
+}
+
+.admin-dashboard .dashboard-heading p {
+    color: #dbeafe;
+    margin: 0;
+    font-size: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+/* STATISTICS */
+
+.admin-dashboard .stats {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 20px;
+    margin: 20px 0 25px;
+}
+
+.admin-dashboard .stats > div {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    min-height: 125px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 9px;
+    box-shadow: 0 5px 18px rgba(15,23,42,.045);
+}
+
+.admin-dashboard .stats > div:nth-child(1) {
+    border-left: 5px solid #2563eb;
+}
+
+.admin-dashboard .stats > div:nth-child(2) {
+    border-left: 5px solid #f59e0b;
+}
+
+.admin-dashboard .stats > div:nth-child(3) {
+    border-left: 5px solid #10b981;
+}
+
+.admin-dashboard .stats b {
+    font-size: 36px;
+    line-height: 1.1;
+    font-weight: 800;
+    color: var(--navy);
+}
+
+.admin-dashboard .stats span {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+/* PANELS */
+
+.admin-dashboard .panel {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 17px;
+    padding: 25px;
+    margin-top: 24px;
+    box-shadow: 0 5px 20px rgba(15,23,42,.045);
+}
+
+.admin-dashboard .panel h2 {
+    color: var(--navy);
+    font-size: 21px;
+    font-weight: 800;
+    margin: 0 0 7px;
+}
+
+.admin-dashboard .panel h3 {
+    font-size: 14px;
+    color: #334155;
+    font-weight: 700;
+    margin: 0 0 17px;
+}
+
+/* ANALYTICS */
+
+.admin-dashboard .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 18px;
+    margin-top: 22px;
+}
+
+.admin-dashboard .chart-card {
+    padding: 20px;
+    border: 1px solid var(--border);
+    background: linear-gradient(145deg,#fff,#f8fafc);
+    border-radius: 14px;
+    min-width: 0;
+}
+
+.admin-dashboard .chart-container {
+    position: relative;
+    height: 250px;
+}
+
+/* MAP */
+
+.admin-dashboard #complaintMap {
+    height: 430px;
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #e8eef2;
+    z-index: 1;
+    margin-top: 20px;
+}
+
+.admin-dashboard .map-legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+    font-size: 13px;
+    color: #475569;
+}
+
+/* FILTERS */
+
+.admin-dashboard .filter-grid {
+    display: grid;
+    grid-template-columns: minmax(180px,2fr) repeat(3,minmax(120px,1fr)) auto;
+    gap: 11px;
+    margin: 22px 0 15px;
+}
+
+.admin-dashboard input,
+.admin-dashboard select,
+.admin-dashboard textarea {
+    font: inherit;
+}
+
+.admin-dashboard .filter-grid input,
+.admin-dashboard .filter-grid select {
+    width: 100%;
+    min-width: 0;
+    padding: 12px 13px;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    background: white;
+    color: #334155;
+    font-size: 13px;
+    outline: none;
+}
+
+.admin-dashboard .filter-grid input:focus,
+.admin-dashboard .filter-grid select:focus,
+.admin-dashboard .remark-text:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    outline: none;
+}
+
+.admin-dashboard button {
+    cursor: pointer;
+    border: 0;
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 12px;
+    transition: .2s ease;
+}
+
+.admin-dashboard button:hover:not(:disabled) {
+    filter: brightness(.96);
+}
+
+.admin-dashboard button:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+.admin-dashboard .reset-button {
+    background: #e2e8f0;
+    color: #334155;
+    white-space: nowrap;
+}
+
+/* COMPACT TABLE */
+
+.admin-dashboard .table-wrapper {
+    width: 100%;
+    overflow-x: hidden;
+    border: 1px solid #dbe3ef;
+    border-radius: 13px;
+    margin-top: 17px;
+    background: white;
+}
+
+.admin-dashboard table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.admin-dashboard table th {
+    background: linear-gradient(110deg,#14213d,#1e3a8a);
+    color: white;
+    padding: 15px 10px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.admin-dashboard table td {
+    padding: 14px 10px;
+    border-bottom: 1px solid #e8edf4;
+    vertical-align: middle;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    color: #334155;
+}
+
+.admin-dashboard table tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+.admin-dashboard table tbody tr:hover {
+    background: #eff6ff;
+}
+
+.admin-dashboard table th:nth-child(1) { width: 17%; }
+.admin-dashboard table th:nth-child(2) { width: 29%; }
+.admin-dashboard table th:nth-child(3) { width: 15%; }
+.admin-dashboard table th:nth-child(4) { width: 11%; }
+.admin-dashboard table th:nth-child(5) { width: 13%; }
+.admin-dashboard table th:nth-child(6) { width: 15%; }
+
+.admin-dashboard .complaint-summary {
+    color: #1e293b;
+    font-weight: 500;
+}
+
+.admin-dashboard .view-details-button {
+    background: #2563eb;
+    color: white;
+    width: 100%;
+    padding: 10px 8px;
+}
+
+/* BADGES */
+
+.admin-dashboard .duplicate-warning {
+    display: inline-block;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    padding: 6px 10px;
+    border-radius: 7px;
+    font-weight: 800;
+    font-size: 11px;
+}
+
+.admin-dashboard .no-duplicate {
+    display: inline-block;
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+    padding: 6px 10px;
+    border-radius: 7px;
+    font-weight: 800;
+    font-size: 11px;
+}
+
+.admin-dashboard .status-label {
+    display: inline-block;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    padding: 6px 10px;
+    border-radius: 7px;
+    font-weight: 800;
+    font-size: 11px;
+}
+
+/* DETAILS MODAL */
+
+.admin-dashboard .details-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(15,23,42,.68);
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.admin-dashboard .details-modal-content {
+    background: white;
+    width: 100%;
+    max-width: 850px;
+    margin: 25px auto;
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+
+.admin-dashboard .details-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.admin-dashboard .details-modal-header h2 {
+    margin: 0;
+    color: var(--navy);
+    font-size: 22px;
+}
+
+.admin-dashboard .close-details {
+    background: #fee2e2;
+    color: #991b1b;
+    font-size: 20px;
+    padding: 7px 13px;
+}
+
+.admin-dashboard .detail-content {
+    display: none;
+}
+
+.admin-dashboard .detail-section {
+    padding: 17px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    background: #f8fafc;
+}
+
+.admin-dashboard .detail-section h3 {
+    color: var(--navy);
+    margin-bottom: 12px;
+}
+
+.admin-dashboard .detail-section p {
+    overflow-wrap: anywhere;
+    line-height: 1.7;
+}
+
+.admin-dashboard .detail-photo {
+    width: 100%;
+    max-width: 420px;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+.admin-dashboard .detail-status-form select {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: white;
+}
+
+.admin-dashboard .detail-status-form button {
+    background: #2563eb;
+    color: white;
+    margin-top: 10px;
+}
+
+/* REMARKS */
+
+.admin-dashboard .detail-remark {
+    background: #f0fdfa;
+    border: 1px solid #99f6e4;
+    border-left: 4px solid #0d9488;
+    border-radius: 9px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.admin-dashboard .detail-remark p {
+    white-space: pre-wrap;
+    margin: 0 0 7px;
+    color: #134e4a;
+}
+
+.admin-dashboard .speak-saved-remark {
+    background: #ccfbf1;
+    color: #115e59;
+    margin-top: 8px;
+}
+
+.admin-dashboard .remark-form {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.admin-dashboard .remark-text {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    resize: vertical;
+    min-height: 85px;
+    font-size: 12px;
+}
+
+.admin-dashboard .remark-actions {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+    margin-top: 9px;
+}
+
+.admin-dashboard .record-remark {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.admin-dashboard .stop-remark {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.admin-dashboard .save-remark {
+    background: #0f766e;
+    color: white;
+}
+
+.admin-dashboard .record-message {
+    display: block;
+    margin-top: 9px;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+.admin-dashboard a {
+    color: #2563eb;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.admin-dashboard a:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1100px) {
+    .admin-dashboard .analytics-grid {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+
+    .admin-dashboard .filter-grid {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .admin-dashboard .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-dashboard .analytics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-dashboard .panel {
+        padding: 17px;
+    }
+
+    .admin-dashboard .dashboard-heading {
+        padding: 23px;
+    }
+
+    .admin-dashboard .dashboard-heading h1 {
+        font-size: 24px;
+    }
+
+    .admin-dashboard .filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-dashboard #complaintMap {
+        height: 330px;
+    }
+
+    .admin-dashboard .chart-container {
+        height: 230px;
+    }
+
+    .admin-dashboard table th,
+    .admin-dashboard table td {
+        padding: 9px 5px;
+        font-size: 10px;
+    }
+
+    .admin-dashboard .details-modal {
+        padding: 10px;
+    }
+
+    .admin-dashboard .details-modal-content {
+        padding: 16px;
+        margin: 10px auto;
+    }
+}
+</style>
+
+
+<div class="admin-dashboard">
+
+    <!-- HEADER -->
+
+    <div class="dashboard-heading">
+        <h1>Administrator Dashboard</h1>
+        <a href="/" style="display:inline-block; background:white; color:#1e40af; padding:10px 18px; border-radius:8px; margin-top:15px; text-decoration:none; font-weight:bold;">
+    ← Back to Home
+</a>
+        <p>Monitor, review and manage citizen complaints in one place.</p>
+    </div>
+
+
+    <!-- STATISTICS -->
+
+    <div class="stats">
+
+        <div>
+            <b>{{ counts.total }}</b>
+            <span>Total Complaints</span>
+        </div>
+
+        <div>
+            <b>{{ counts.pending }}</b>
+            <span>Pending / Review</span>
+        </div>
+
+        <div>
+            <b>{{ counts.progress }}</b>
+            <span>In Progress</span>
+        </div>
+
+    </div>
+
+
+    <!-- ANALYTICS -->
+
+    <section class="panel">
+
+        <h2>Complaint Analytics</h2>
+
+        <p class="muted">
+            Visual statistics of registered complaints.
+        </p>
+
+        <div class="analytics-grid">
+
+            <div class="chart-card">
+                <h3>Complaints by Department</h3>
+                <div class="chart-container">
+                    <canvas id="departmentChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3>Complaints by Priority</h3>
+                <div class="chart-container">
+                    <canvas id="priorityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3>Complaints by Status</h3>
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <p id="analyticsMessage" class="muted"></p>
+
+    </section>
+
+
+    <!-- MAP -->
+
+    <section class="panel">
+
+        <h2>Live Complaint Map</h2>
+
+        <p class="muted">
+            View reported civic problems across different locations.
+            Click markers to explore complaints.
+        </p>
+
+        <div id="complaintMap"></div>
+
+        <div class="map-legend">
+            <span>🔴 Urgent</span>
+            <span>🟠 High</span>
+            <span>🔵 Medium / Other</span>
+            <span>🟢 Resolved</span>
+        </div>
+
+        <p id="mapMessage" class="muted" style="margin-top:10px;">
+            Loading complaint locations...
+        </p>
+
+    </section>
+
+
+    <!-- ALL COMPLAINTS -->
+
+    <section class="panel">
+
+        <h2>All Complaints</h2>
+
+        <p class="muted">
+            Search, filter and manage registered complaints.
+        </p>
+
+
+        <!-- FILTERS -->
+
+        <div class="filter-grid">
+
+            <input
+                type="text"
+                id="complaintSearch"
+                placeholder="Search complaint ID or complaint..."
+            >
+
+            <select id="departmentFilter">
+                <option value="">All Departments</option>
+                <option value="Water Supply">Water Supply</option>
+                <option value="Road Development / PWD">Road Development / PWD</option>
+                <option value="Sanitation">Sanitation</option>
+                <option value="Drainage">Drainage</option>
+                <option value="Electricity / Streetlights">Electricity / Streetlights</option>
+                <option value="General Public Grievance">General Public Grievance</option>
+            </select>
+
+            <select id="priorityFilter">
+                <option value="">All Priorities</option>
+                <option value="Urgent">Urgent</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+
+            <select id="statusFilter">
+                <option value="">All Statuses</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Under Review">Under Review</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+            </select>
+
+            <button
+                type="button"
+                class="reset-button"
+                onclick="resetComplaintFilters()">
+                Reset Filters
+            </button>
+
+        </div>
+
+        <p id="filterResult" class="muted"></p>
+
+
+        <!-- COMPACT TABLE -->
+
+        {% if complaints %}
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Complaint ID</th>
+                        <th>Complaint Details</th>
+                        <th>Department</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody id="complaintTableBody">
+
+                    {% for c in complaints %}
+
+                    <tr
+                        class="complaint-row"
+                        data-id="{{ c.complaint_id|lower }}"
+                        data-text="{{ c.complaint_text|lower }}"
+                        data-department="{{ c.department|lower }}"
+                        data-priority="{{ c.severity|lower }}"
+                        data-status="{{ c.status|lower }}"
+                    >
+
+                        <td>
+                            <strong>{{ c.complaint_id }}</strong>
+                            <br>
+                            <small>{{ c.created_at }}</small>
+                        </td>
+
+                        <td>
+                            <div class="complaint-summary">
+                                {{ c.complaint_text|truncate(110, True) }}
+                            </div>
+                            <small>Language: {{ c.language }}</small>
+                        </td>
+
+                        <td>{{ c.department }}</td>
+
+                        <td>
+                            <strong>{{ c.severity }}</strong>
+                        </td>
+
+                        <td>
+                            <span class="status-label">
+                                {{ c.status }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <button
+                                type="button"
+                                class="view-details-button"
+                                onclick="openComplaintDetails('detail-{{ loop.index }}')">
+                                View Details
+                            </button>
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <p class="muted">No complaints registered yet.</p>
+
+        {% endif %}
+
+
+        <!-- FULL DETAILS FOR EACH COMPLAINT -->
+
+        {% for c in complaints %}
+
+        <div class="detail-content" id="detail-{{ loop.index }}">
+
+            <!-- COMPLAINT INFORMATION -->
+
+            <div class="detail-section">
+
+                <h3>Complaint Information</h3>
+
+                <p><strong>Complaint ID:</strong> {{ c.complaint_id }}</p>
+
+                <p><strong>Submitted:</strong> {{ c.created_at }}</p>
+
+                <p>
+                    <strong>Complaint:</strong><br>
+                    {{ c.complaint_text }}
+                </p>
+
+                <p><strong>Language:</strong> {{ c.language }}</p>
+
+                <p><strong>Department:</strong> {{ c.department }}</p>
+
+                <p><strong>Priority:</strong> {{ c.severity }}</p>
+
+                <p><strong>Current Status:</strong> {{ c.status }}</p>
+
+            </div>
+
+
+            <!-- DUPLICATE CHECK -->
+
+            <div class="detail-section">
+
+                <h3>AI Duplicate Detection</h3>
+
+                {% if c.duplicate_of %}
+
+                <span class="duplicate-warning">
+                    ⚠ Possible Duplicate
+                </span>
+
+                <p>
+                    <strong>Original Complaint ID:</strong>
+                    {{ c.duplicate_of }}
+                </p>
+
+                {% if c.similarity_score is not none %}
+
+                <p>
+                    <strong>Similarity:</strong>
+                    {{ (c.similarity_score * 100)|round(1) }}%
+                </p>
+
+                {% endif %}
+
+                {% else %}
+
+                <span class="no-duplicate">
+                    ✓ No duplicate detected
+                </span>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- PHOTO -->
+
+            <div class="detail-section">
+
+                <h3>Photo Evidence</h3>
+
+                {% if c.photo %}
+
+                <a
+                    href="{{ url_for('static', filename='uploads/' + c.photo) }}"
+                    target="_blank"
+                    rel="noopener noreferrer">
+
+                    <img
+                        src="{{ url_for('static', filename='uploads/' + c.photo) }}"
+                        alt="Complaint photo"
+                        class="detail-photo">
+
+                </a>
+
+                <p class="muted">Click the photo to view full size.</p>
+
+                {% else %}
+
+                <p class="muted">No photo evidence provided.</p>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- LOCATION -->
+
+            <div class="detail-section">
+
+                <h3>Complaint Location</h3>
+
+                <p>{{ c.location or "Location not provided" }}</p>
+
+                {% if c.latitude is not none and c.longitude is not none %}
+
+                <a
+                    href="https://www.openstreetmap.org/?mlat={{ c.latitude }}&mlon={{ c.longitude }}#map=16/{{ c.latitude }}/{{ c.longitude }}"
+                    target="_blank"
+                    rel="noopener noreferrer">
+                    View Complaint on Map
+                </a>
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- STATUS UPDATE -->
+
+            <div class="detail-section">
+
+                <h3>Update Complaint Status</h3>
+
+                <form
+                    method="POST"
+                    action="{{ url_for('update_status') }}"
+                    class="detail-status-form">
+
+                    <input
+                        type="hidden"
+                        name="complaint_id"
+                        value="{{ c.complaint_id }}">
+
+                    <select name="status" required>
+
+                        <option value="Submitted"
+                            {% if c.status == "Submitted" %}selected{% endif %}>
+                            Submitted
+                        </option>
+
+                        <option value="Under Review"
+                            {% if c.status == "Under Review" %}selected{% endif %}>
+                            Under Review
+                        </option>
+
+                        <option value="In Progress"
+                            {% if c.status == "In Progress" %}selected{% endif %}>
+                            In Progress
+                        </option>
+
+                        <option value="Resolved"
+                            {% if c.status == "Resolved" %}selected{% endif %}>
+                            Resolved
+                        </option>
+
+                    </select>
+
+                    <button type="submit">Update Status</button>
+
+                </form>
+
+            </div>
+
+
+            <!-- ADMIN REMARKS -->
+
+            <div class="detail-section">
+
+                <h3>Admin Voice Remarks</h3>
+
+                {% set saved_remarks = remarks_by_complaint.get(c.complaint_id, []) %}
+
+                {% if saved_remarks %}
+
+                    {% for r in saved_remarks %}
+
+                    <div class="detail-remark">
+
+                        <p>{{ r.remark_text }}</p>
+
+                        <small>
+                            {{ r.created_at }} | {{ r.language }}
+                        </small>
+
+                        <br>
+
+                        <button
+                            type="button"
+                            class="speak-saved-remark"
+                            data-remark-id="{{ r.id }}">
+                            🔊 Hear Remark
+                        </button>
+
+                    </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                <p class="muted">No remarks saved yet.</p>
+
+                {% endif %}
+
+
+                <form
+                    method="POST"
+                    action="{{ url_for('save_remark') }}"
+                    class="remark-form">
+
+                    <input
+                        type="hidden"
+                        name="complaint_id"
+                        value="{{ c.complaint_id }}">
+
+                    <textarea
+                        class="remark-text"
+                        name="remark_text"
+                        rows="3"
+                        maxlength="3000"
+                        placeholder="Record a voice remark or type an update..."
+                        required></textarea>
+
+                    <div class="remark-actions">
+
+                        <button
+                            type="button"
+                            class="record-remark">
+                            🎤 Record
+                        </button>
+
+                        <button
+                            type="button"
+                            class="stop-remark"
+                            disabled>
+                            Stop
+                        </button>
+
+                        <button
+                            type="submit"
+                            class="save-remark">
+                            Save Remark
+                        </button>
+
+                    </div>
+
+                    <small class="record-message" aria-live="polite">
+                        Ready to record.
+                    </small>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+
+        <!-- DETAILS MODAL -->
+
+        <div class="details-modal" id="complaintDetailsModal">
+
+            <div class="details-modal-content">
+
+                <div class="details-modal-header">
+
+                    <h2>Complaint Details</h2>
+
+                    <button
+                        type="button"
+                        class="close-details"
+                        onclick="closeComplaintDetails()">
+                        ✕
+                    </button>
+
+                </div>
+
+                <div id="complaintDetailsBody"></div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<!-- CHART.JS -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<!-- LEAFLET CSS -->
+
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+
+<link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+
+<!-- LEAFLET JAVASCRIPT -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+
+<!-- ANALYTICS -->
+
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+
+    const message = document.getElementById("analyticsMessage");
+
+    if (typeof Chart === "undefined") {
+        message.textContent =
+            "Charts could not load. Check your internet connection.";
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/api/complaints");
+
+        if (!response.ok) {
+            throw new Error("Could not fetch complaints");
+        }
+
+        const complaints = await response.json();
+
+        function countBy(field) {
+
+            const counts = {};
+
+            complaints.forEach(function(c) {
+                const value = c[field] || "Not specified";
+                counts[value] = (counts[value] || 0) + 1;
+            });
+
+            return counts;
+        }
+
+        function createChart(id, counts, type) {
+    const canvas = document.querySelector(
+        ".admin-dashboard canvas#" + id
+    );
+
+    console.log("Chart element:", id, canvas);
+    console.log("Element type:", canvas?.tagName);
+
+    if (!canvas || canvas.tagName.toLowerCase() !== "canvas") {
+        console.error("Invalid chart canvas:", id);
+        return;
+    }
+
+    const labels = Object.keys(counts);
+    const values = Object.values(counts);
+
+    new Chart(canvas, {
+        type: type,
+        data: {
+            labels: labels.length ? labels : ["No complaints yet"],
+            datasets: [{
+                label: "Complaints",
+                data: labels.length ? values : [0],
+                backgroundColor: [
+                    "#4e79a7",
+                    "#f28e2b",
+                    "#e15759",
+                    "#76b7b2",
+                    "#59a14f",
+                    "#edc948",
+                    "#b07aa1"
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: "bottom"
+                }
+            },
+            scales: type === "bar" ? {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            } : {}
+        }
+    });
+}
+        createChart("departmentChart", countBy("department"), "bar");
+        createChart("priorityChart", countBy("severity"), "doughnut");
+        createChart("statusChart", countBy("status"), "pie");
+
+        message.textContent =
+            complaints.length + " complaint records included in the charts.";
+
+    } catch (error) {
+
+        console.error(error);
+        message.textContent = "Unable to load complaint analytics.";
+
+    }
+
+});
+</script>
+
+
+<!-- SEARCH AND FILTER -->
+
+<script>
+
+function filterComplaints() {
+
+    const search =
+        document.getElementById("complaintSearch").value.toLowerCase().trim();
+
+    const department =
+        document.getElementById("departmentFilter").value.toLowerCase();
+
+    const priority =
+        document.getElementById("priorityFilter").value.toLowerCase();
+
+    const status =
+        document.getElementById("statusFilter").value.toLowerCase();
+
+    const rows = document.querySelectorAll(".complaint-row");
+
+    let visibleCount = 0;
+
+    rows.forEach(function(row) {
+
+        const id = row.dataset.id || "";
+        const text = row.dataset.text || "";
+
+        const rowDepartment = row.dataset.department || "";
+        const rowPriority = row.dataset.priority || "";
+        const rowStatus = row.dataset.status || "";
+
+        const show =
+            (id.includes(search) || text.includes(search)) &&
+            (!department || rowDepartment === department) &&
+            (!priority || rowPriority === priority) &&
+            (!status || rowStatus === status);
+
+        row.style.display = show ? "" : "none";
+
+        if (show) visibleCount++;
+
+    });
+
+    document.getElementById("filterResult").textContent =
+        "Showing " + visibleCount + " of " + rows.length + " complaints.";
+
+}
+
+function resetComplaintFilters() {
+
+    document.getElementById("complaintSearch").value = "";
+    document.getElementById("departmentFilter").value = "";
+    document.getElementById("priorityFilter").value = "";
+    document.getElementById("statusFilter").value = "";
+
+    filterComplaints();
+
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+
+    document.getElementById("complaintSearch")
+        .addEventListener("input", filterComplaints);
+
+    document.getElementById("departmentFilter")
+        .addEventListener("change", filterComplaints);
+
+    document.getElementById("priorityFilter")
+        .addEventListener("change", filterComplaints);
+
+    document.getElementById("statusFilter")
+        .addEventListener("change", filterComplaints);
+
+    filterComplaints();
+
+});
+
+</script>
+
+
+<!-- DETAILS POPUP -->
+
+<script>
+
+let activeComplaintDetail = null;
+let originalDetailParent = null;
+let originalDetailNextSibling = null;
+
+function openComplaintDetails(detailId) {
+
+    const detail = document.getElementById(detailId);
+    const modal = document.getElementById("complaintDetailsModal");
+    const body = document.getElementById("complaintDetailsBody");
+
+    if (!detail || !modal || !body) {
+        return;
+    }
+
+    if (activeComplaintDetail) {
+        closeComplaintDetails();
+    }
+
+    activeComplaintDetail = detail;
+    originalDetailParent = detail.parentNode;
+    originalDetailNextSibling = detail.nextSibling;
+
+    body.appendChild(detail);
+
+    detail.style.display = "block";
+    modal.style.display = "block";
+
+    document.body.style.overflow = "hidden";
+
+}
+
+function closeComplaintDetails() {
+
+    const modal = document.getElementById("complaintDetailsModal");
+
+    if (!modal || !activeComplaintDetail) {
+        return;
+    }
+
+    activeComplaintDetail.style.display = "none";
+
+    if (originalDetailParent) {
+
+        if (
+            originalDetailNextSibling &&
+            originalDetailNextSibling.parentNode === originalDetailParent
+        ) {
+            originalDetailParent.insertBefore(
+                activeComplaintDetail,
+                originalDetailNextSibling
+            );
+        } else {
+            originalDetailParent.appendChild(activeComplaintDetail);
+        }
+
+    }
+
+    activeComplaintDetail = null;
+    originalDetailParent = null;
+    originalDetailNextSibling = null;
+
+    modal.style.display = "none";
+    document.body.style.overflow = "";
+
+}
+
+document.addEventListener("click", function(event) {
+
+    const modal = document.getElementById("complaintDetailsModal");
+
+    if (event.target === modal) {
+        closeComplaintDetails();
+    }
+
+});
+
+document.addEventListener("keydown", function(event) {
+
+    if (event.key === "Escape") {
+        closeComplaintDetails();
+    }
+
+});
+
+</script>
+
+
+<!-- LIVE COMPLAINT MAP -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", async function() {
+
+    const mapElement = document.getElementById("complaintMap");
+    const mapMessage = document.getElementById("mapMessage");
+
+    if (!mapElement) return;
+
+    if (typeof L === "undefined") {
+
+        mapMessage.textContent =
+            "Map library could not load. Check your internet connection.";
+
+        return;
+    }
+
+    if (typeof L.markerClusterGroup !== "function") {
+
+        mapMessage.textContent =
+            "Marker clustering library could not load. Refresh the page.";
+
+        return;
+    }
+
+    const map = L.map("complaintMap", {
+        zoomControl: true,
+        scrollWheelZoom: true
+    }).setView([12.2958, 76.6394], 7);
+
+    const osmLayer = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            attribution: "&copy; OpenStreetMap contributors",
+            maxZoom: 19,
+            keepBuffer: 4
+        }
+    );
+
+    const backupLayer = L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        {
+            attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+            subdomains: "abcd",
+            maxZoom: 19
+        }
+    );
+
+    let backupActivated = false;
+
+    osmLayer.on("tileerror", function() {
+
+        if (!backupActivated) {
+
+            backupActivated = true;
+
+            if (map.hasLayer(osmLayer)) {
+                map.removeLayer(osmLayer);
+            }
+
+            backupLayer.addTo(map);
+
+        }
+
+    });
+
+    osmLayer.addTo(map);
+
+    const markers = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        maxClusterRadius: 50
+    });
+
+    try {
+
+        const response = await fetch("/api/complaints");
+
+        if (!response.ok) {
+            throw new Error("Could not fetch complaints.");
+        }
+
+        const complaints = await response.json();
+
+        let markerCount = 0;
+        const markerLocations = [];
+
+        complaints.forEach(function(c) {
+
+            const lat = Number(c.latitude);
+            const lon = Number(c.longitude);
+
+            if (
+                c.latitude === null ||
+                c.longitude === null ||
+                c.latitude === "" ||
+                c.longitude === "" ||
+                !Number.isFinite(lat) ||
+                !Number.isFinite(lon) ||
+                lat < -90 || lat > 90 ||
+                lon < -180 || lon > 180
+            ) {
+                return;
+            }
+
+            let color = "#3388ff";
+
+            if (c.status === "Resolved") {
+                color = "#22b573";
+            } else if (c.severity === "Urgent") {
+                color = "#e63946";
+            } else if (c.severity === "High") {
+                color = "#ff8c42";
+            }
+
+            const marker = L.circleMarker([lat, lon], {
+                radius: 9,
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.9,
+                weight: 2
+            });
+
+            const popup = document.createElement("div");
+
+            const heading = document.createElement("h3");
+            heading.textContent = "Complaint Details";
+            popup.appendChild(heading);
+
+            const details = [
+                ["Complaint ID", c.complaint_id],
+                ["Complaint", c.complaint_text],
+                ["Department", c.department],
+                ["Priority", c.severity],
+                ["Status", c.status],
+                ["Location", c.location],
+                ["Language", c.language],
+                ["Submitted", c.created_at]
+            ];
+
+            details.forEach(function(item) {
+
+                if (
+                    item[1] === undefined ||
+                    item[1] === null ||
+                    item[1] === ""
+                ) {
+                    return;
+                }
+
+                const paragraph = document.createElement("p");
+                paragraph.style.margin = "6px 0";
+
+                const bold = document.createElement("strong");
+                bold.textContent = item[0] + ": ";
+
+                paragraph.appendChild(bold);
+
+                paragraph.appendChild(
+                    document.createTextNode(String(item[1]))
+                );
+
+                popup.appendChild(paragraph);
+
+            });
+
+            marker.bindPopup(popup, {
+                maxWidth: 300
+            });
+
+            markers.addLayer(marker);
+            markerLocations.push([lat, lon]);
+            markerCount++;
+
+        });
+
+        map.addLayer(markers);
+
+        if (markerCount > 0) {
+
+            map.fitBounds(markerLocations, {
+                padding: [35,35],
+                maxZoom: 14
+            });
+
+            mapMessage.textContent =
+                markerCount + " complaint locations displayed on the map.";
+
+        } else {
+
+            mapMessage.textContent =
+                "No complaint locations available yet.";
+
+        }
+
+    } catch(error) {
+
+        console.error("Complaint map error:", error);
+
+        mapMessage.textContent =
+            "Unable to load complaint locations. Please refresh the page.";
+
+    }
+
+    function refreshMapSize() {
+        map.invalidateSize(true);
+    }
+
+    setTimeout(refreshMapSize, 300);
+    setTimeout(refreshMapSize, 1000);
+
+    window.addEventListener("resize", refreshMapSize);
+
+});
+
+</script>
+
+
+<!-- GNANI PRISMA VOICE-TO-TEXT FOR ADMIN REMARKS -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    document.querySelectorAll(".remark-form").forEach(function(form) {
+
+        const recordButton = form.querySelector(".record-remark");
+        const stopButton = form.querySelector(".stop-remark");
+        const textarea = form.querySelector(".remark-text");
+        const message = form.querySelector(".record-message");
+
+        let recorder = null;
+        let stream = null;
+        let audioChunks = [];
+
+        recordButton.addEventListener("click", async function() {
+
+            if (
+                !navigator.mediaDevices ||
+                !navigator.mediaDevices.getUserMedia ||
+                !window.MediaRecorder
+            ) {
+
+                message.textContent =
+                    "Microphone recording is unavailable. Use localhost or HTTPS in a supported browser.";
+
+                return;
+            }
+
+            try {
+
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
+
+                audioChunks = [];
+
+                recorder = new MediaRecorder(stream);
+
+                recorder.ondataavailable = function(event) {
+
+                    if (event.data && event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+
+                };
+
+                recorder.onerror = function() {
+
+                    message.textContent =
+                        "Recording failed. Please try again.";
+
+                    stream.getTracks().forEach(track => track.stop());
+
+                    recordButton.disabled = false;
+                    stopButton.disabled = true;
+
+                };
+
+                recorder.onstop = async function() {
+
+                    stream.getTracks().forEach(track => track.stop());
+
+                    const audioBlob = new Blob(audioChunks, {
+                        type: recorder.mimeType || "audio/webm"
+                    });
+
+                    if (!audioBlob.size) {
+
+                        message.textContent =
+                            "No audio recorded. Please try again.";
+
+                        recordButton.disabled = false;
+                        stopButton.disabled = true;
+
+                        return;
+                    }
+
+                    message.textContent =
+                        "Sending audio to Gnani Prisma for transcription...";
+
+                    const data = new FormData();
+
+                    data.append(
+                        "audio",
+                        audioBlob,
+                        "admin-remark.webm"
+                    );
+
+                    try {
+
+                        const response = await fetch("/transcribe", {
+                            method: "POST",
+                            body: data
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(
+                                result.error || "Transcription failed."
+                            );
+                        }
+
+                        textarea.value = result.transcript || "";
+
+                        message.textContent = textarea.value
+                            ? "Transcription ready. Edit it if needed, then click Save Remark."
+                            : "No speech was detected. Please record again.";
+
+                    } catch(error) {
+
+                        message.textContent =
+                            error.message || "Could not transcribe the recording.";
+
+                    } finally {
+
+                        recordButton.disabled = false;
+                        stopButton.disabled = true;
+
+                    }
+
+                };
+
+                recorder.start();
+
+                recordButton.disabled = true;
+                stopButton.disabled = false;
+
+                message.textContent = "Recording... Speak now.";
+
+            } catch(error) {
+
+                message.textContent =
+                    "Microphone permission denied or unavailable. Allow microphone access and try again.";
+
+                recordButton.disabled = false;
+                stopButton.disabled = true;
+
+            }
+
+        });
+
+        stopButton.addEventListener("click", function() {
+
+            if (recorder && recorder.state === "recording") {
+
+                stopButton.disabled = true;
+                recorder.stop();
+
+            }
+
+        });
+
+        form.addEventListener("submit", function(event) {
+
+            if (!textarea.value.trim()) {
+
+                event.preventDefault();
+
+                message.textContent =
+                    "Please record or type a remark before saving.";
+
+                textarea.focus();
+
+            }
+
+        });
+
+    });
+
+});
+
+</script>
+
+
+<!-- PLAY SAVED ADMIN REMARKS -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function() {
+
+    let currentAudio = null;
+    let currentButton = null;
+
+    document.addEventListener("click", async function(event) {
+
+        const button = event.target.closest(".speak-saved-remark");
+
+        if (!button) return;
+
+        const remarkId = button.dataset.remarkId;
+
+        if (!remarkId) {
+            alert("Remark ID is missing.");
+            return;
+        }
+
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+
+        if (currentButton) {
+            currentButton.disabled = false;
+            currentButton.textContent = "🔊 Hear Remark";
+        }
+
+        const originalText = button.textContent;
+
+        button.disabled = true;
+        button.textContent = "Loading audio...";
+
+        try {
+
+            const formData = new FormData();
+            formData.append("remark_id", remarkId);
+
+            const response = await fetch("/speak_remark", {
+                method: "POST",
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(
+                    result.error || "Could not generate remark audio."
+                );
+            }
+
+            currentAudio = new Audio(result.audio_url);
+            currentButton = button;
+
+            button.textContent = "Playing Remark...";
+
+            currentAudio.onended = function() {
+
+                button.disabled = false;
+                button.textContent = originalText;
+
+                currentAudio = null;
+                currentButton = null;
+
+            };
+
+            currentAudio.onerror = function() {
+
+                button.disabled = false;
+                button.textContent = originalText;
+
+                currentAudio = null;
+                currentButton = null;
+
+                alert("Could not play the remark audio.");
+
+            };
+
+            await currentAudio.play();
+
+        } catch(error) {
+
+            console.error("Hear Remark error:", error);
+
+            button.disabled = false;
+            button.textContent = originalText;
+
+            currentAudio = null;
+            currentButton = null;
+
+            alert("Hear Remark failed: " + error.message);
+
+        }
+
+    });
+
+});
+
+</script>
+
 {% endblock %}
